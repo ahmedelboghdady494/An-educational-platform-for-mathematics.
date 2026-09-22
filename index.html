@@ -1100,6 +1100,42 @@ input,select,textarea{background:#fff!important;color:#123047!important;border-c
 .achievement-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px}.achievement-card{background:#fff;border:1px solid #d6e7eb;border-radius:18px;padding:20px;box-shadow:0 7px 20px rgba(28,76,92,.06)}.achievement-card .a-icon{font-size:38px;margin-bottom:9px}.achievement-card .a-proof{margin-top:10px;color:#5e7b88;font-size:12px}
 body.auth-locked .topbar,body.auth-locked .app{display:none!important}
 @media(max-width:700px){.profile-form{grid-template-columns:1fr}.profile-form .full{grid-column:auto}.auth-card{padding:22px}.auth-card h1{font-size:26px}}
+/* =========================================================
+   CALM LIGHT-BLUE THEME
+========================================================= */
+:root{
+    --bg:#e8f6fb;
+    --surface:#f2fbfe;
+    --surface-2:#dff3f8;
+    --line:#b9dfe8;
+    --text:#123f52;
+    --muted:#5f7f8d;
+    --primary:#2b9fbe;
+    --primary-dark:#167b98;
+}
+body{background:linear-gradient(180deg,#e8f6fb 0%,#dff3f8 100%)!important;color:var(--text)!important;}
+.topbar{background:#d8f1f7!important;border-bottom-color:#afd7e1!important;box-shadow:0 5px 25px rgba(38,104,125,.10)!important;}
+.sidebar{background:#e0f4f8!important;border-right-color:#b9dfe8!important;}
+.brand-text span,.muted{color:var(--muted)!important;}
+.icon-btn,.profile-btn{background:#edfafd!important;border-color:#afd7e1!important;color:var(--text)!important;}
+.icon-btn:hover{background:#d9f2f7!important;}
+.card,.stat,.feature-card,.unit-card,.term-card,.lesson-box,.quiz-card,.reward,.achievement-card,.profile-panel,.modal-box{background:#f2fbfe!important;border-color:#b9dfe8!important;color:var(--text)!important;box-shadow:0 8px 24px rgba(31,100,120,.07)!important;}
+.primary{background:linear-gradient(135deg,#45b8d3,#258fab)!important;color:#fff!important;border-color:transparent!important;}
+.secondary{background:#e1f4f8!important;color:#15566b!important;border-color:#a9d7e2!important;}
+.secondary:hover{background:#d2edf3!important;}
+input,select,textarea{background:#f6fdff!important;color:var(--text)!important;border-color:#a9d7e2!important;}
+.progress-row,.branch-path,.path{background:#e5f5f9!important;color:var(--text)!important;border-color:#b9dfe8!important;}
+.bar{background:#d1eaf0!important;}
+.notice{background:#eaf8fb!important;border-color:#abd8e2!important;color:#236075!important;}
+.auth-gate{background:linear-gradient(135deg,#dff4f8,#cfeef5)!important;}
+.auth-card{background:#edfafd!important;border-color:#acd8e2!important;color:var(--text)!important;box-shadow:0 18px 50px rgba(33,105,124,.12)!important;}
+.google-btn{background:#dff4f8!important;color:#164f63!important;border-color:#9fcfdb!important;}
+.auth-divider{color:#668794!important;}
+.directory-link{color:#137f99!important;}
+.reward-icon,.a-icon{background:#dff4f8!important;}
+/* Keep important text readable on the calm theme. */
+.page-title p,.feature-card p,.term-card p,.lesson-box p,.quiz-card p{color:var(--muted)!important;}
+
 </style>
 </head>
 
@@ -1113,7 +1149,7 @@ body.auth-locked .topbar,body.auth-locked .app{display:none!important}
       <p class="muted">Grade 9 Advanced Mathematics • UAE Curriculum</p>
       <button class="google-btn" onclick="startGoogleLogin()"><span style="font-size:20px">G</span> Continue with Google</button>
       <div class="auth-divider">Student sign-in</div>
-      <p class="muted" style="font-size:12px">Google sign-in is prepared for Supabase Authentication. Add the project URL and anonymous key in the configuration section before publishing.</p>
+      <p class="muted" style="font-size:12px">Google sign-in is ready, but the free Supabase connection must be added once before Google Login can work.</p>
     </div>
     <div id="profileStep" class="hidden">
       <h1>Student Information <span style="font-size:15px;color:#6b8794">• بيانات الطالب</span></h1>
@@ -3485,11 +3521,39 @@ function studentLogin(){
 
 
 /* =========================================================
+   SUPABASE SETUP HELPER
+========================================================= */
+function showSupabaseSetup(){
+    document.getElementById("modalTitle").textContent="Connect Google Login";
+    document.getElementById("modalContent").innerHTML=`
+      <p style="color:#5f7f8d;line-height:1.7;margin-bottom:16px">
+        Google Login needs one free Supabase project. Paste your Project URL and anon key here once.
+      </p>
+      <input id="setupSupabaseUrl" placeholder="Supabase Project URL (https://....supabase.co)" style="width:100%;margin-bottom:10px">
+      <input id="setupSupabaseKey" placeholder="Supabase anon/public key" style="width:100%;margin-bottom:12px">
+      <button class="primary" style="width:100%" onclick="saveSupabaseSetup()">Save & Continue</button>
+      <p style="font-size:12px;color:#6b8794;margin-top:12px;line-height:1.6">
+        After this, Google must also be enabled under Supabase → Authentication → Sign In / Providers → Google.
+      </p>`;
+    document.getElementById("modal").classList.remove("hidden");
+}
+
+function saveSupabaseSetup(){
+    const url=document.getElementById("setupSupabaseUrl").value.trim();
+    const key=document.getElementById("setupSupabaseKey").value.trim();
+    if(!url.startsWith("https://") || !key){toast("Enter the Supabase URL and anon key.");return;}
+    localStorage.setItem("aa_supabase_url",url);
+    localStorage.setItem("aa_supabase_anon",key);
+    closeModal();
+    location.reload();
+}
+
+/* =========================================================
    GOOGLE + STUDENT PROFILE ONBOARDING
 ========================================================= */
 
-const SUPABASE_URL = "PASTE_YOUR_SUPABASE_URL_HERE";
-const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_KEY_HERE";
+const SUPABASE_URL = localStorage.getItem("aa_supabase_url") || "PASTE_YOUR_SUPABASE_URL_HERE";
+const SUPABASE_ANON_KEY = localStorage.getItem("aa_supabase_anon") || "PASTE_YOUR_SUPABASE_ANON_KEY_HERE";
 let supabaseClient = null;
 
 function initAuthClient(){
@@ -3515,9 +3579,9 @@ async function bootstrapAuth(){
 
 async function startGoogleLogin(){
     initAuthClient();
-    if(!supabaseClient){ toast("Google sign-in is prepared. Add the Supabase keys first."); return; }
+    if(!supabaseClient){ showSupabaseSetup(); return; }
     const {error}=await supabaseClient.auth.signInWithOAuth({provider:"google",options:{redirectTo:window.location.origin+window.location.pathname}});
-    if(error) toast(error.message);
+    if(error) toast("Google Login error: " + error.message);
 }
 
 function showProfileStep(){
