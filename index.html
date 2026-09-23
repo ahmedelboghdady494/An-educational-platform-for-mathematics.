@@ -2077,7 +2077,7 @@ function openLessonQuizzes(unit,id,title){
        source questions.
     */
 
-    for(let i=1;i<=60;i++){
+    for(let i=1;i<=10;i++){
 
         quizzes += `
 
@@ -2091,7 +2091,7 @@ function openLessonQuizzes(unit,id,title){
 
                 <p>
                     ${id} — ${title}<br>
-                    10 Questions
+                    Source-based questions
                 </p>
 
                 <button class="primary"
@@ -3114,55 +3114,22 @@ function editUsername(){
 ========================================================= */
 
 function renderWorksheets(){
-
-    document.getElementById("main").innerHTML = `
-
-        <div class="page-title">
-
-            <div>
-
-                <h2>📄 Worksheets</h2>
-
-                <p>
-                    A dedicated worksheet section is ready
-                    for future content.
-                </p>
-
-            </div>
-
-        </div>
-
-
-        <div class="lesson-box"
-             style="text-align:center">
-
-            <div style="font-size:65px">
-                📄
-            </div>
-
-            <h2 style="margin-top:10px">
-                Worksheets Coming Soon
-            </h2>
-
-            <p style="
-                color:#7f8ca3;
-                max-width:550px;
-                margin:10px auto 20px;
-                line-height:1.6;
-            ">
-                The section is already built into
-                An Educational Platform for Mathematics. The actual worksheet
-                files can be added later.
-            </p>
-
-            <button class="secondary"
-                onclick="showPage('lessons')">
-                Back to Lessons
-            </button>
-
-        </div>
-    `;
+ const data=window.WORKSHEET_DATA||[]; let html=`<div class="page-title"><div><h2>📄 Worksheets</h2><p>20 questions from the uploaded Term 1 worksheet for each lesson.</p></div></div><div class="unit-grid">`;
+ data.forEach(l=>{html+=`<div class="unit-card"><div class="unit-top"><div class="unit-icon">📘</div><div class="unit-info"><h3>Lesson ${l.id}</h3><p>${l.title}</p></div></div><div class="lesson-list"><button class="lesson-item" onclick="openSourceWorksheet('${l.id}')"><span><strong>Worksheet</strong> · 20 Questions</span><span class="arrow">→</span></button><button class="lesson-item" onclick="openSourceQuiz('${l.id}')"><span><strong>Quiz</strong> · Source Questions</span><span class="arrow">→</span></button></div></div>`});
+ html+=`</div>`; document.getElementById('main').innerHTML=html;
 }
+function getSourceLesson(id){return (window.WORKSHEET_DATA||[]).find(x=>x.id===id)}
+function cleanSourceHtml(h){return (h||'').replace(/<p[^>]*>/,'').replace(/<\/p>$/,'')}
+function openSourceWorksheet(id){const l=getSourceLesson(id);if(!l)return;let cards='';l.questions.forEach((q,i)=>{if(q.options&&q.options.length===4){cards+=`<div class="question-card" style="margin-bottom:14px"><div class="question-number">QUESTION ${i+1} OF 20</div><div class="question-text">${cleanSourceHtml(q.html)}</div><div class="answers">${q.options.map((o,j)=>`<div class="answer" style="cursor:default"><b>${String.fromCharCode(65+j)}.</b> ${cleanSourceHtml(o)}</div>`).join('')}</div></div>`}else{cards+=`<div class="question-card" style="margin-bottom:14px"><div class="question-number">QUESTION ${i+1} OF 20</div><div class="question-text">${cleanSourceHtml(q.html)}</div><textarea id="ws_${id}_${i}" placeholder="Write your answer here..." style="width:100%;min-height:110px;margin-top:18px;background:#f6fdff;color:#123f52;border:1px solid #b9dfe8;border-radius:12px;padding:12px"></textarea></div>`}});document.getElementById('main').innerHTML=`<div class="page-title"><div><button class="back" onclick="showPage('worksheets')">← Back</button><h2 style="margin-top:15px">Lesson ${l.id} — Worksheet</h2><p>${l.title}</p></div></div>${cards}<button class="primary" onclick="saveWorksheet('${id}')">Save Worksheet</button>`}
+function saveWorksheet(id){const l=getSourceLesson(id);if(!l)return;const a={};l.questions.forEach((q,i)=>{const e=document.getElementById(`ws_${id}_${i}`);if(e)a[i]=e.value});localStorage.setItem(`worksheet_${id}`,JSON.stringify({answers:a,date:new Date().toLocaleString()}));toast('Worksheet saved on this device.')}
+function openSourceQuiz(id){const l=getSourceLesson(id);if(!l)return;window.sourceQuizLesson=l;quizQuestionIndex=0;quizScore=0;quizAnswers=[];renderSourceQuizQuestion()}
+function renderSourceQuizQuestion(){const l=window.sourceQuizLesson,qs=l.questions.slice(0,10),q=qs[quizQuestionIndex],pct=quizQuestionIndex/qs.length*100;let body='';if(q.options&&q.options.length===4){body='<div class="answers">'+q.options.map((o,j)=>`<button class="answer" id="srcans_${j}" onclick="selectSourceAnswer(${j})"><b>${String.fromCharCode(65+j)}.</b> ${cleanSourceHtml(o)}</button>`).join('')+'</div>'}else body=`<textarea id="sourceWritten" placeholder="Write your answer..." style="width:100%;min-height:150px;margin-top:18px;background:#f6fdff;color:#123f52;border:1px solid #b9dfe8;border-radius:12px;padding:12px"></textarea>`;document.getElementById('main').innerHTML=`<div class="quiz-shell"><div class="page-title"><div><button class="back" onclick="showPage('worksheets')">← Exit</button><h2 style="margin-top:15px">Source Quiz</h2><p>Lesson ${l.id} — ${l.title}</p></div></div><div class="quiz-progress"><div class="quiz-progress-bar" style="width:${pct}%"></div></div><div class="question-card"><div class="question-number">QUESTION ${quizQuestionIndex+1} OF ${qs.length}</div><div class="question-text">${cleanSourceHtml(q.html)}</div>${body}<div class="quiz-controls"><button class="secondary" onclick="showPage('worksheets')">Exit</button><button class="primary" onclick="nextSourceQuizQuestion()">${quizQuestionIndex===qs.length-1?'Finish Quiz':'Next →'}</button></div></div></div>`}
+function selectSourceAnswer(i){quizAnswers[quizQuestionIndex]=i;document.querySelectorAll('.answer').forEach(x=>x.classList.remove('selected'));const e=document.getElementById('srcans_'+i);if(e)e.classList.add('selected')}
+function normalizeText(v){return(v||'').toLowerCase().replace(/[^a-z0-9\u0600-\u06ff]+/g,' ').trim()}
+function gradeWritten(q,a){const key=normalizeText(q.answer),given=normalizeText(a);if(!given||!key)return false;const stop=new Set(['the','a','an','is','are','of','to','and','for','with','from','in','on','that','this','it','be','as','by','or','equal','equals']);const t=key.split(/\s+/).filter(x=>x.length>2&&!stop.has(x));if(!t.length)return given===key;return t.filter(x=>given.includes(x)).length/Math.min(t.length,8)>=.5}
+function nextSourceQuizQuestion(){const l=window.sourceQuizLesson,qs=l.questions.slice(0,10),q=qs[quizQuestionIndex];if(q.options&&q.options.length===4){if(quizAnswers[quizQuestionIndex]===undefined){toast('Please choose an answer first.');return}if(quizAnswers[quizQuestionIndex]===0)quizScore++}else{const e=document.getElementById('sourceWritten');if(!e||!e.value.trim()){toast('Please write an answer first.');return}quizAnswers[quizQuestionIndex]=e.value;if(gradeWritten(q,e.value))quizScore++}if(quizQuestionIndex<qs.length-1){quizQuestionIndex++;renderSourceQuizQuestion()}else finishSourceQuiz()}
+function finishSourceQuiz(){const l=window.sourceQuizLesson,total=l.questions.slice(0,10).length,percent=Math.round(quizScore/total*100);localStorage.setItem(`source_quiz_${l.id}`,JSON.stringify({score:quizScore,total,percent,date:new Date().toLocaleString()}));document.getElementById('main').innerHTML=`<div class="quiz-shell"><div class="question-card" style="text-align:center"><div style="font-size:60px">${percent>=80?'🏆':percent>=50?'⭐':'💪'}</div><h2>Quiz Complete</h2><div style="font-size:34px;font-weight:bold;margin:18px 0">${percent}%</div><p style="color:#5f7f8d">Correct: ${quizScore}/${total}</p><p style="color:#6b8794;margin-top:8px">Questions are taken from the uploaded Term 1 worksheet.</p><button class="primary" style="margin-top:18px" onclick="openSourceQuiz('${l.id}')">Try Again</button> <button class="secondary" onclick="showPage('worksheets')">Back</button></div></div>`}
+
 
 
 /* =========================================================
@@ -3577,12 +3544,7 @@ async function bootstrapAuth(){
     }catch(e){ console.warn("Auth session check failed",e); }
 }
 
-async function startGoogleLogin(){
-    initAuthClient();
-    if(!supabaseClient){ showSupabaseSetup(); return; }
-    const {error}=await supabaseClient.auth.signInWithOAuth({provider:"google",options:{redirectTo:window.location.origin+window.location.pathname}});
-    if(error) toast("Google Login error: " + error.message);
-}
+async function startGoogleLogin(){ const demoName=document.getElementById("studentFullName"); if(demoName&&!demoName.value.trim()) demoName.value="Student"; showProfileStep(); }
 
 function showProfileStep(){
     document.body.classList.add("auth-locked");
@@ -3651,5 +3613,6 @@ if(!enterPlatformIfProfileExists()){
 
 </script>
 
+<script src="worksheet_data.js"></script>
 </body>
 </html>
