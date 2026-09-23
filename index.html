@@ -1143,13 +1143,13 @@ input,select,textarea{background:#f6fdff!important;color:var(--text)!important;b
 
 <section id="authGate" class="auth-gate">
   <div class="auth-card">
-    <div id="googleStep">
+    <div id="studentStep">
       <div style="font-size:48px">📐</div>
       <h1>An Educational Platform for Mathematics</h1>
       <p class="muted">Grade 9 Advanced Mathematics • UAE Curriculum</p>
-      <button class="google-btn" onclick="startGoogleLogin()"><span style="font-size:20px">G</span> Continue with Google</button>
-      <div class="auth-divider">Student sign-in</div>
-      <p class="muted" style="font-size:12px">Google sign-in is ready, but the free Supabase connection must be added once before Google Login can work.</p>
+      <button class="google-btn" onclick="startStudentLogin()">👤 دخول الطالب</button>
+      <div class="auth-divider">Student access</div>
+      <p class="muted" style="font-size:12px">اضغط «دخول الطالب» للانتقال مباشرة إلى بيانات الطالب.</p>
     </div>
     <div id="profileStep" class="hidden">
       <h1>Student Information <span style="font-size:15px;color:#6b8794">• بيانات الطالب</span></h1>
@@ -1292,7 +1292,6 @@ input,select,textarea{background:#f6fdff!important;color:var(--text)!important;b
 <div class="toast" id="toast"></div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 
 /* =========================================================
@@ -2171,328 +2170,132 @@ function startQuiz(unit,id,title,number){
    questions to be inserted later.
 */
 
-function getQuestions(unit,id){
-
-    return [
-
-        {
-            q:"Solve: x + 7 = 15",
-            a:["6","7","8","9"],
-            c:2
-        },
-
-        {
-            q:"Solve: 3x = 21",
-            a:["5","6","7","8"],
-            c:2
-        },
-
-        {
-            q:"If 2x + 4 = 18, what is x?",
-            a:["5","6","7","8"],
-            c:1
-        },
-
-        {
-            q:"Which expression represents 'five more than x'?",
-            a:["5x","x - 5","x + 5","x ÷ 5"],
-            c:2
-        },
-
-        {
-            q:"Solve: 4x - 8 = 20",
-            a:["5","6","7","8"],
-            c:2
-        },
-
-        {
-            q:"If y = 2x + 3 and x = 4, what is y?",
-            a:["9","10","11","12"],
-            c:2
-        },
-
-        {
-            q:"Which value makes 5x = 40 true?",
-            a:["6","7","8","9"],
-            c:2
-        },
-
-        {
-            q:"Solve: x/3 = 6",
-            a:["12","15","18","21"],
-            c:2
-        },
-
-        {
-            q:"What is the slope of y = 3x + 2?",
-            a:["2","3","-2","-3"],
-            c:1
-        },
-
-        {
-            q:"What is the y-intercept of y = 4x - 7?",
-            a:["4","7","-4","-7"],
-            c:3
-        }
-
-    ];
+function sourceLessonForQuiz(id){
+    return (window.WORKSHEET_DATA||[]).find(x=>x.id===id) || null;
 }
 
+function seededShuffle(arr, seed){
+    const out=arr.slice();
+    let s=seed>>>0;
+    for(let i=out.length-1;i>0;i--){
+        s=(s*1664525+1013904223)>>>0;
+        const j=s%(i+1);
+        [out[i],out[j]]=[out[j],out[i]];
+    }
+    return out;
+}
+
+function getQuestions(unit,id,number=1){
+    const lesson=sourceLessonForQuiz(id);
+    if(!lesson || !lesson.questions || lesson.questions.length<10){
+        return [];
+    }
+    // Every quiz is a different 10-question selection from the 20 source questions.
+    const seed=[...String(id)+'-'+String(number)].reduce((a,c)=>((a*31)+c.charCodeAt(0))>>>0,7);
+    return seededShuffle(lesson.questions,seed).slice(0,10).map(q=>({
+        q:q.html,
+        options:q.options||[],
+        c:q.correctIndex,
+        answerKey:q.answerKey||''
+    }));
+}
+
+function cleanQuizHtml(h){
+    return (h||'').replace(/^<p[^>]*>/,'').replace(/<\/p>$/,'');
+}
 
 function renderQuestion(unit,id,title,number){
-
-    const questions = getQuestions(unit,id);
-
-    const q = questions[quizQuestionIndex];
-
-    const percent =
-        (quizQuestionIndex / questions.length) * 100;
-
-    let answers = "";
-
-    q.a.forEach((answer,index)=>{
-
-        answers += `
-
-            <button class="answer"
-                onclick="selectAnswer(${index})"
-                id="answer-${index}">
-
-                ${String.fromCharCode(65+index)}.
-                ${answer}
-
-            </button>
-
-        `;
-
-    });
-
-
-    document.getElementById("main").innerHTML = `
-
-        <div class="quiz-shell">
-
-            <div class="page-title">
-
-                <div>
-
-                    <button class="back"
-                        onclick="openLessonQuizzes('${unit}','${id}','${title}')">
-                        ← Exit Quiz
-                    </button>
-
-                    <h2 style="margin-top:15px">
-                        Quiz ${number}
-                    </h2>
-
-                    <p>
-                        ${unit} → ${id} — ${title}
-                    </p>
-
-                </div>
-
-            </div>
-
-
-            <div class="quiz-progress">
-
-                <div class="quiz-progress-bar"
-                    style="width:${percent}%">
-                </div>
-
-            </div>
-
-
-            <div class="question-card">
-
-                <div class="question-number">
-
-                    QUESTION
-                    ${quizQuestionIndex+1}
-                    OF
-                    ${questions.length}
-
-                </div>
-
-                <div class="question-text">
-                    ${q.q}
-                </div>
-
-                <div class="answers">
-                    ${answers}
-                </div>
-
-                <div class="quiz-controls">
-
-                    <button class="secondary"
-                        onclick="openLessonQuizzes('${unit}','${id}','${title}')">
-                        Exit
-                    </button>
-
-                    <button class="primary"
-                        onclick="nextQuestion('${unit}','${id}','${title}',${number})">
-                        ${quizQuestionIndex === questions.length-1
-                            ? "Finish Quiz"
-                            : "Next →"}
-                    </button>
-
-                </div>
-
-            </div>
-
+    const questions=getQuestions(unit,id,number);
+    const q=questions[quizQuestionIndex];
+    if(!q){ toast('لم يتم العثور على أسئلة المصدر لهذا الدرس.'); return; }
+    const percent=(quizQuestionIndex/questions.length)*100;
+    let answers='';
+    if(q.options.length===4){
+        q.options.forEach((answer,index)=>{
+            answers+=`<button class="answer" onclick="selectAnswer(${index})" id="answer-${index}">${cleanQuizHtml(answer)}</button>`;
+        });
+    }else{
+        answers=`<textarea id="quizWrittenAnswer" placeholder="Write your answer here..." style="width:100%;min-height:150px;margin-top:18px;background:#f6fdff;color:#123f52;border:1px solid #b9dfe8;border-radius:12px;padding:12px"></textarea>`;
+    }
+    document.getElementById('main').innerHTML=`
+      <div class="quiz-shell">
+        <div class="page-title"><div>
+          <button class="back" onclick="openLessonQuizzes('${unit}','${id}','${title}')">← Exit Quiz</button>
+          <h2 style="margin-top:15px">Quiz ${number}</h2>
+          <p>${unit} → ${id} — ${title}</p>
+          <p style="font-size:12px;color:#5f7f8d">الأسئلة مأخوذة من ملف ورقة العمل المرفوع.</p>
+        </div></div>
+        <div class="quiz-progress"><div class="quiz-progress-bar" style="width:${percent}%"></div></div>
+        <div class="question-card">
+          <div class="question-number">QUESTION ${quizQuestionIndex+1} OF ${questions.length}</div>
+          <div class="question-text">${cleanQuizHtml(q.q)}</div>
+          <div class="answers">${answers}</div>
+          <div class="quiz-controls">
+            <button class="secondary" onclick="openLessonQuizzes('${unit}','${id}','${title}')">Exit</button>
+            <button class="primary" onclick="nextQuestion('${unit}','${id}','${title}',${number})">${quizQuestionIndex===questions.length-1?'Finish Quiz':'Next →'}</button>
+          </div>
         </div>
-    `;
+      </div>`;
 }
-
 
 function selectAnswer(index){
-
-    quizAnswers[quizQuestionIndex] = index;
-
-    document
-        .querySelectorAll(".answer")
-        .forEach(x=>x.classList.remove("selected"));
-
-    const el =
-        document.getElementById("answer-"+index);
-
-    if(el){
-        el.classList.add("selected");
-    }
+    quizAnswers[quizQuestionIndex]=index;
+    document.querySelectorAll('.answer').forEach(x=>x.classList.remove('selected'));
+    const el=document.getElementById('answer-'+index);
+    if(el) el.classList.add('selected');
 }
 
+function gradeSourceWritten(q,answer){
+    const key=normalizeText(q.answerKey), given=normalizeText(answer);
+    if(!given || !key) return false;
+    const stop=new Set(['the','a','an','is','are','of','to','and','for','with','from','in','on','that','this','it','be','as','by','or','equal','equals','step','method','equation']);
+    const tokens=key.split(/\s+/).filter(x=>x.length>2&&!stop.has(x));
+    if(!tokens.length) return false;
+    const hits=tokens.filter(x=>given.includes(x)).length;
+    return hits/Math.min(tokens.length,8)>=0.5;
+}
 
 function nextQuestion(unit,id,title,number){
-
-    const questions = getQuestions(unit,id);
-
-    if(quizAnswers[quizQuestionIndex] === undefined){
-
-        toast("Please choose an answer first.");
-
-        return;
-    }
-
-
-    if(
-        quizAnswers[quizQuestionIndex]
-        ===
-        questions[quizQuestionIndex].c
-    ){
-
-        quizScore++;
-
-    }
-
-
-    if(quizQuestionIndex < questions.length-1){
-
-        quizQuestionIndex++;
-
-        renderQuestion(unit,id,title,number);
-
+    const questions=getQuestions(unit,id,number);
+    const q=questions[quizQuestionIndex];
+    if(!q) return;
+    if(q.options.length===4){
+        if(quizAnswers[quizQuestionIndex]===undefined){toast('Please choose an answer first.');return;}
+        if(q.c!==null && quizAnswers[quizQuestionIndex]===q.c) quizScore++;
     }else{
-
+        const e=document.getElementById('quizWrittenAnswer');
+        if(!e || !e.value.trim()){toast('Please write an answer first.');return;}
+        quizAnswers[quizQuestionIndex]=e.value;
+        if(gradeSourceWritten(q,e.value)) quizScore++;
+    }
+    if(quizQuestionIndex<questions.length-1){
+        quizQuestionIndex++;
+        renderQuestion(unit,id,title,number);
+    }else{
         finishQuiz(unit,id,title,number);
-
     }
 }
 
-
 function finishQuiz(unit,id,title,number){
-
-    const questions = getQuestions(unit,id);
-
-    const percent =
-        Math.round(
-            (quizScore / questions.length) * 100
-        );
-
-    const key =
-        `quiz_${unit}_${id}_${number}`;
-
-    const result = {
-
-        score:quizScore,
-        total:questions.length,
-        percent:percent,
-        date:new Date().toLocaleString()
-
-    };
-
-    localStorage.setItem(
-        key,
-        JSON.stringify(result)
-    );
-
-
-    document.getElementById("main").innerHTML = `
-
-        <div class="quiz-shell">
-
-            <div class="question-card"
-                 style="text-align:center">
-
-                <div style="font-size:65px">
-                    ${percent >= 80 ? "🏆" :
-                      percent >= 50 ? "⭐" : "💪"}
-                </div>
-
-                <h2 style="margin-top:10px">
-                    Quiz Complete!
-                </h2>
-
-                <p style="
-                    color:#94a3b8;
-                    margin-top:8px;
-                ">
-                    ${unit} → ${id} → Quiz ${number}
-                </p>
-
-                <div style="
-                    font-size:45px;
-                    font-weight:bold;
-                    margin:25px 0 8px;
-                ">
-                    ${percent}%
-                </div>
-
-                <p style="color:#94a3b8">
-                    Correct:
-                    <strong>${quizScore}</strong>
-                    /
-                    ${questions.length}
-                </p>
-
-                <div style="
-                    margin-top:24px;
-                    display:flex;
-                    justify-content:center;
-                    flex-wrap:wrap;
-                    gap:10px;
-                ">
-
-                    <button class="primary"
-                        onclick="openLessonQuizzes('${unit}','${id}','${title}')">
-                        Back to Quizzes
-                    </button>
-
-                    <button class="secondary"
-                        onclick="startQuiz('${unit}','${id}','${title}',${number})">
-                        Try Again
-                    </button>
-
-                    <button class="secondary"
-                        onclick="showPage('progress')">
-                        View Progress
-                    </button>
-
-                </div>
-
-            </div>
-
+    const questions=getQuestions(unit,id,number);
+    const percent=Math.round((quizScore/questions.length)*100);
+    const key=`quiz_${unit}_${id}_${number}`;
+    const result={score:quizScore,total:questions.length,percent,date:new Date().toLocaleString()};
+    localStorage.setItem(key,JSON.stringify(result));
+    document.getElementById('main').innerHTML=`
+      <div class="quiz-shell"><div class="question-card" style="text-align:center">
+        <div style="font-size:65px">${percent>=80?'🏆':percent>=50?'⭐':'💪'}</div>
+        <h2 style="margin-top:10px">Quiz Complete!</h2>
+        <p style="color:#5f7f8d;margin-top:8px">${unit} → ${id} → Quiz ${number}</p>
+        <div style="font-size:45px;font-weight:bold;margin:25px 0 8px">${percent}%</div>
+        <p style="color:#5f7f8d">Correct: <strong>${quizScore}</strong> / ${questions.length}</p>
+        <p style="font-size:12px;color:#6b8794;margin-top:10px">This quiz uses questions from the uploaded Term 1 worksheet and changes by quiz number.</p>
+        <div style="margin-top:24px;display:flex;justify-content:center;flex-wrap:wrap;gap:10px">
+          <button class="primary" onclick="openLessonQuizzes('${unit}','${id}','${title}')">Back to Quizzes</button>
+          <button class="secondary" onclick="startQuiz('${unit}','${id}','${title}',${number})">Try Again</button>
+          <button class="secondary" onclick="showPage('progress')">View Progress</button>
         </div>
-    `;
+      </div></div>`;
 }
 
 
@@ -3488,67 +3291,17 @@ function studentLogin(){
 
 
 /* =========================================================
-   SUPABASE SETUP HELPER
+   DUMMY STUDENT LOGIN
 ========================================================= */
-function showSupabaseSetup(){
-    document.getElementById("modalTitle").textContent="Connect Google Login";
-    document.getElementById("modalContent").innerHTML=`
-      <p style="color:#5f7f8d;line-height:1.7;margin-bottom:16px">
-        Google Login needs one free Supabase project. Paste your Project URL and anon key here once.
-      </p>
-      <input id="setupSupabaseUrl" placeholder="Supabase Project URL (https://....supabase.co)" style="width:100%;margin-bottom:10px">
-      <input id="setupSupabaseKey" placeholder="Supabase anon/public key" style="width:100%;margin-bottom:12px">
-      <button class="primary" style="width:100%" onclick="saveSupabaseSetup()">Save & Continue</button>
-      <p style="font-size:12px;color:#6b8794;margin-top:12px;line-height:1.6">
-        After this, Google must also be enabled under Supabase → Authentication → Sign In / Providers → Google.
-      </p>`;
-    document.getElementById("modal").classList.remove("hidden");
+function startStudentLogin(){
+    const demoName=document.getElementById('studentFullName');
+    if(demoName && !demoName.value.trim()) demoName.value='Student';
+    showProfileStep();
 }
-
-function saveSupabaseSetup(){
-    const url=document.getElementById("setupSupabaseUrl").value.trim();
-    const key=document.getElementById("setupSupabaseKey").value.trim();
-    if(!url.startsWith("https://") || !key){toast("Enter the Supabase URL and anon key.");return;}
-    localStorage.setItem("aa_supabase_url",url);
-    localStorage.setItem("aa_supabase_anon",key);
-    closeModal();
-    location.reload();
-}
-
-/* =========================================================
-   GOOGLE + STUDENT PROFILE ONBOARDING
-========================================================= */
-
-const SUPABASE_URL = localStorage.getItem("aa_supabase_url") || "PASTE_YOUR_SUPABASE_URL_HERE";
-const SUPABASE_ANON_KEY = localStorage.getItem("aa_supabase_anon") || "PASTE_YOUR_SUPABASE_ANON_KEY_HERE";
-let supabaseClient = null;
-
-function initAuthClient(){
-    if(window.supabase && SUPABASE_URL.startsWith("https://") && !SUPABASE_URL.includes("PASTE_")){
-        supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-    }
-}
-
-async function bootstrapAuth(){
-    initAuthClient();
-    if(!supabaseClient) return;
-    try{
-        const {data}=await supabaseClient.auth.getSession();
-        if(data && data.session){
-            const user=data.session.user;
-            const meta=user.user_metadata||{};
-            const name=meta.full_name || meta.name || "";
-            if(name && !document.getElementById("studentFullName").value) document.getElementById("studentFullName").value=name;
-            showProfileStep();
-        }
-    }catch(e){ console.warn("Auth session check failed",e); }
-}
-
-async function startGoogleLogin(){ const demoName=document.getElementById("studentFullName"); if(demoName&&!demoName.value.trim()) demoName.value="Student"; showProfileStep(); }
 
 function showProfileStep(){
     document.body.classList.add("auth-locked");
-    document.getElementById("googleStep").classList.add("hidden");
+    document.getElementById("studentStep").classList.add("hidden");
     document.getElementById("profileStep").classList.remove("hidden");
 }
 
@@ -3589,10 +3342,9 @@ async function logout(){
     localStorage.removeItem("aa_current_user");
     localStorage.removeItem("aa_student_profile");
     currentUser="Student";
-    if(supabaseClient){try{await supabaseClient.auth.signOut();}catch(e){}}
     updateProfile();
     document.getElementById("authGate").classList.remove("hidden");
-    document.getElementById("googleStep").classList.remove("hidden");
+    document.getElementById("studentStep").classList.remove("hidden");
     document.getElementById("profileStep").classList.add("hidden");
     document.body.classList.add("auth-locked");
 }
@@ -3606,7 +3358,7 @@ updateProfile();
 
 if(!enterPlatformIfProfileExists()){
     document.body.classList.add("auth-locked");
-    bootstrapAuth();
+    
 }else{
     renderHome();
 }
